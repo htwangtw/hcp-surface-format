@@ -2,6 +2,7 @@
 set -e
 #
 #  environment: FSL and freesurfer binary added to path
+# need to make this file spm competible
 # --------------------------------------------------------------------------------
 #  Usage Description Function
 # --------------------------------------------------------------------------------
