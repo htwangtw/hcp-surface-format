@@ -1,11 +1,24 @@
-#!/bin/bash
-set -e
-#set -x
+#!/bin/bash - 
+#===============================================================================
+#
+#          FILE: createNewTemplateSpace.sh
+# 
+#         USAGE: ./createNewTemplateSpace.sh 5125 5
+# 
+#   DESCRIPTION: Basic function to add new resolution templates to HCP pipeline 
+#		 repository.
+# 
+#       OPTIONS: ---
+#  REQUIREMENTS: FSL 5.0, wb_command; In path: FSLDIR, HCPPIPEDIR 
+#          BUGS: ---
+#         NOTES: ---
+#        AUTHOR: Hao-Ting Wang (PostDoc), htwangtw@gmail.com
+#  ORGANIZATION: University of York
+#       CREATED: 05/06/19 00:19:45
+#      REVISION:  ---
+#===============================================================================
 
-
-# Requirements for this script
-#  installed versions of: FSL (version 5.0.6), wb_command
-#  environment: FSLDIR , HCPPIPEDIR added to path
+set -o nounset                              # Treat unset variables as an error
 
 # --------------------------------------------------------------------------------
 #  Usage Description Function
@@ -28,11 +41,11 @@ if [ $# -eq 0 ] ; then show_usage; exit 0; fi
 HCPPIPEDIR=~/HCPpipelines
 WBDIR=/usr/bin
 
-NumberOfVertices=${1}
-NewMesh=${2}
+NumberOfVertices=${1}                           # per hamishpere
+NewMesh=${2}                                    # ?k
 
 TemplateFolder="${HCPPIPEDIR}/global/templates/standard_mesh_atlases"
-OriginalMesh="164"
+OriginalMesh="164"                              # keep it this way
 SubcorticalLabelTable="${HCPPIPEDIR}/global/config/FreeSurferSubcorticalLabelTableLut.txt"
 
 ${WBDIR}/wb_command -surface-create-sphere \
@@ -63,9 +76,9 @@ ${WBDIR}/wb_command -surface-information \
 
 echo ""
 
-NewResolution=`${WBDIR}/wb_command -surface-information \
-                 ${TemplateFolder}/R.sphere.${NewMesh}k_fs_LR.surf.gii\
-                  | grep Mean | awk '{print $2}' | awk -F "." '{print $1}'`
+NewResolution=$(${WBDIR}/wb_command -surface-information \
+		${TemplateFolder}/R.sphere.${NewMesh}k_fs_LR.surf.gii \
+		| grep Mean | awk '{print $2}' | awk -F "." '{print $1}')
 
 echo NewResolution is ${NewResolution}
 

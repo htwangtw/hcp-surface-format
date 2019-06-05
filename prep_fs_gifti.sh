@@ -9,101 +9,110 @@ show_usage() {
   echo " This is a basic script to prepare freesurfer files ready for HCP pipeline."
   echo " The freesurfer files should be created through recon_all"
   echo " and the white mater surface should have been manually checked. "
-  echo " The output files will be generated under the freesurfer directory surf/ and mri/"
+  echo " The output files will be generated under the tmp/ directory"
   echo ""
   echo " Usage:"
   echo " 	  prep_fs_gifti.sh <R number> "
   exit 1
 }
 
-
-SURF_SUBJECTS_DIR="/home/hw1012/Project_surface_downsampling/data/surf"
-HCP_STANDARD_DIR="/home/hw1012/HCPpipelines/global/templates/standard_mesh_atlases"
-FSL_STANDARD_DIR="/usr/local/fsl/data/standard"
-export SUBJECTS_DIR=${SURF_SUBJECTS_DIR}
 SUBJ=${1}
 
-cd ${SURF_SUBJECTS_DIR}/${SUBJ}
+HOME="/home/hw1012"
+WDIR="${HOME}/HCP_downsampling"
+DATA_DIR="${WDIR}/data"
+HCP_STANDARD_DIR="${DATA_DIR}/external/HCPpipelines_global/templates/standard_mesh_atlases"
+FSL_STANDARD_DIR="/usr/local/fsl/data/standard"
+SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
+TMPDIR="${DATA_DIR}/tmp"
+OUTDIR="${DATA_DIR}/processed/${SUBJ}"
+
+mkdir -p ${TMPDIR}
+mkdir -p ${OUTDIR}
+
+cd ${WDIR}
+
 echo "Preprocessing ${SUBJ}..."
+
 # 1.1 Get freesurfer data to MNI space warp field
 # convert the mgz file to nifti
-mri_convert mri/brain.mgz mri/brain.nii.gz
+mri_convert  ${SURF_DIR}/mri/brain.mgz  ${OUTDIR}/fs_highres.nii.gz
 
 # reorienting the image to match the approximate 
 # orientation of the standard template images (MNI152)
-fslreorient2std mri/brain.nii.gz mri/brain.nii.gz 
+fslreorient2std ${OUTDIR}/fs_highres.nii.gz ${OUTDIR}/fs_highres.nii.gz 
 
 echo "generate transformation matrix...."
-flirt -in mri/brain.nii.gz \
+flirt -in ${OUTDIR}/fs_highres.nii.gz \
   -ref ${FSL_STANDARD_DIR}/MNI152_T1_1mm_brain.nii.gz \
-  -omat mri/transforms/fs_highres2standard.mat
+  -omat ${OUTDIR}/fs_highres2standard.mat
 
 echo "generate nonlinear warpfield..."
 fnirt --ref=${FSL_STANDARD_DIR}/MNI152_T1_1mm_brain.nii.gz \
-  --in=mri/brain.nii.gz \
-  --aff=mri/transforms/fs_highres2standard.mat \
-  --iout=mri/brain2MNI.nii.gz \
-  --fout=mri/transforms/fs_highres2standard_warp.nii.gz
+  --in=${OUTDIR}/fs_highres.nii.gz \
+  --aff=${OUTDIR}/fs_highres2standard.mat \
+  --iout=${OUTDIR}/fs_highres2MNI.nii.gz \
+  --fout=${OUTDIR}/fs_highres2standard_warp.nii.gz
 echo "generate inverse warpfield..."
-invwarp -w mri/transforms/fs_highres2standard_warp.nii.gz \
-  -o mri/transforms/standard2fs_highres_warp.nii.gz \
-  -r mri/brain.nii.gz
+invwarp -w ${OUTDIR}/fs_highres2standard_warp.nii.gz \
+  -o ${OUTDIR}/standard2fs_highres_warp.nii.gz \
+  -r ${OUTDIR}/fs_highres.nii.gz
 
 #Find c_ras offset between FreeSurfer surface and volume and generate matrix to transform surfaces
-cras=($(mri_info --cras mri/brain.nii.gz))
-echo "1 0 0 ""${cras[0]}" > mri/c_ras.mat
-echo "0 1 0 ""${cras[1]}" >> mri/c_ras.mat
-echo "0 0 1 ""${cras[2]}" >> mri/c_ras.mat
-echo "0 0 0 1" >> mri/c_ras.mat
+cras=($(mri_info --cras ${OUTDIR}/fs_highres.nii.gz))
+echo "1 0 0 ""${cras[0]}" >> ${OUTDIR}/c_ras.mat
+echo "0 1 0 ""${cras[1]}" >> ${OUTDIR}/c_ras.mat
+echo "0 0 1 ""${cras[2]}" >> ${OUTDIR}/c_ras.mat
+echo "0 0 0 1" >> ${OUTDIR}/c_ras.mat
 
 for HEMI in lh rh ; do
 
   if [ "${HEMI}" == "rh" ]; then
-    FS_RL_FILE2='R'
+    FS_RL='R'
   elif [ "${HEMI}" == "lh" ]; then
-    FS_RL_FILE2='L'
+    FS_RL='L'
   fi
 
   # 1.2 generate white, pial, and mid-thickness gifti
   wb_shortcuts -freesurfer-resample-prep \
-    surf/${HEMI}.white \
-    surf/${HEMI}.pial \
-    surf/${HEMI}.sphere.reg \
-    ${HCP_STANDARD_DIR}/resample_fsaverage/fs_LR-deformed_to-fsaverage.${FS_RL_FILE2}.sphere.164k_fs_LR.surf.gii \
-    surf/${HEMI}.midthickness.surf.gii \
-    surf/${HEMI}.midthickness.164k_fs_LR.surf.gii \
-    surf/${HEMI}.sphere.reg.surf.gii
-  mris_convert surf/${HEMI}.pial surf/${HEMI}.pial.surf.gii
-  mris_convert surf/${HEMI}.white surf/${HEMI}.white.surf.gii
+    ${SURF_DIR}/surf/${HEMI}.white \
+    ${SURF_DIR}/surf/${HEMI}.pial \
+    ${SURF_DIR}/surf/${HEMI}.sphere.reg \
+    ${HCP_STANDARD_DIR}/resample_fsaverage/fs_LR-deformed_to-fsaverage.${FS_RL}.sphere.164k_fs_LR.surf.gii \
+    ${OUTDIR}/${HEMI}.midthickness.surf.gii \
+    ${OUTDIR}/${HEMI}.midthickness.164k_fs_LR.surf.gii \
+    ${OUTDIR}/${HEMI}.sphere.reg.surf.gii
+  mris_convert ${SURF_DIR}/surf/${HEMI}.pial ${OUTDIR}/${HEMI}.pial.surf.gii
+  mris_convert ${SURF_DIR}/surf/${HEMI}.white ${OUTDIR}/${HEMI}.white.surf.gii
 
   # apply cras
   wb_command -surface-apply-affine \
-    surf/${HEMI}.pial.surf.gii \
-    mri/c_ras.mat \
-    surf/${HEMI}.pial.surf.gii
+    ${OUTDIR}/${HEMI}.pial.surf.gii \
+    ${OUTDIR}/c_ras.mat \
+    ${OUTDIR}/${HEMI}.pial.surf.gii
   wb_command -surface-apply-affine \
-    surf/${HEMI}.white.surf.gii \
-    mri/c_ras.mat \
-    surf/${HEMI}.white.surf.gii
+    ${OUTDIR}/${HEMI}.white.surf.gii \
+    ${OUTDIR}/c_ras.mat \
+    ${OUTDIR}/${HEMI}.white.surf.gii
   wb_command -surface-apply-affine \
-    surf/${HEMI}.midthickness.surf.gii \
-    mri/c_ras.mat \
-    surf/${HEMI}.midthickness.surf.gii
+    ${OUTDIR}/${HEMI}.midthickness.surf.gii \
+    ${OUTDIR}/c_ras.mat \
+    ${OUTDIR}/${HEMI}.midthickness.surf.gii
 
   # 1.3 register native space surface files to MNI space
   wb_command -surface-apply-warpfield \
-    surf/${HEMI}.midthickness.surf.gii \
-    mri/transforms/standard2fs_highres_warp.nii.gz \
-    surf/${HEMI}.midthickness.MNI.surf.gii \
-    -fnirt mri/transforms/fs_highres2standard_warp.nii.gz
+    ${OUTDIR}/${HEMI}.midthickness.surf.gii \
+    ${OUTDIR}/standard2fs_highres_warp.nii.gz \
+    ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
+    -fnirt ${OUTDIR}/fs_highres2standard_warp.nii.gz
   wb_command -surface-apply-warpfield \
-    surf/${HEMI}.pial.surf.gii \
-    mri/transforms/standard2fs_highres_warp.nii.gz \
-    surf/${HEMI}.pial.MNI.surf.gii \
-    -fnirt mri/transforms/fs_highres2standard_warp.nii.gz
+    ${OUTDIR}/${HEMI}.pial.surf.gii \
+    ${OUTDIR}/standard2fs_highres_warp.nii.gz \
+    ${OUTDIR}/${HEMI}.pial.MNI.surf.gii \
+    -fnirt ${OUTDIR}/fs_highres2standard_warp.nii.gz
   wb_command -surface-apply-warpfield \
-    surf/${HEMI}.white.surf.gii \
-    mri/transforms/standard2fs_highres_warp.nii.gz \
-    surf/${HEMI}.white.MNI.surf.gii \
-    -fnirt mri/transforms/fs_highres2standard_warp.nii.gz
+    ${OUTDIR}/${HEMI}.white.surf.gii \
+    ${OUTDIR}/standard2fs_highres_warp.nii.gz \
+    ${OUTDIR}/${HEMI}.white.MNI.surf.gii \
+    -fnirt ${OUTDIR}/fs_highres2standard_warp.nii.gz
 done

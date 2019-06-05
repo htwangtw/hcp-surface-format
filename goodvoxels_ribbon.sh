@@ -17,99 +17,100 @@ show_usage() {
   exit 1
 }
 
-
-SURF_SUBJECTS_DIR="/home/hw1012/Project_surface_downsampling/data/surf"
-FUNC_SUBJECTS_DIR="/home/hw1012/Project_surface_downsampling/data/vol"
-
-export SUBJECTS_DIR=${SURF_SUBJECTS_DIR}
 SUBJ=${1}
 
-cd ${FUNC_SUBJECTS_DIR}/${SUBJ}
-# mean_func.nii.gz to MNI space
-applywarp -i RS.feat/mean_func.nii.gz \
-  -o mean_func_MNI.nii.gz \
-  -r RS.feat/reg/standard.nii.gz \
-  -w RS.feat/reg/highres2standard_warp.nii.gz \
-  --premat=RS.feat/reg/example_func2highres.mat
+HOME="/home/hw1012"
+WDIR="${HOME}/HCP_downsampling"
+DATA_DIR="${WDIR}/data"
+HCP_STANDARD_DIR="${DATA_DIR}/external/HCPpipelines_global/templates/standard_mesh_atlases"
+FSL_STANDARD_DIR="/usr/local/fsl/data/standard"
+SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
+FUNC_DIR="${DATA_DIR}/interim/${SUBJ}"
+TMPDIR="${DATA_DIR}/tmp"
 
-mkdir HCP_pipeline_output
+cd ${WDIR}
+
+echo "Preprocessing ${SUBJ}..."
 
 echo "Creating cortical ribbons for ${SUBJ}..."
 for HEMI in lh rh ; do
 
   wb_command -create-signed-distance-volume \
-    ${SURF_SUBJECTS_DIR}/${SUBJ}/surf/${HEMI}.white.MNI.surf.gii \
-    ${FUNC_SUBJECTS_DIR}/${SUBJ}/mean_func_MNI.nii.gz \
-    HCP_pipeline_output/${HEMI}.white.MNI.dist.nii.gz
+    ${TMPDIR}/${HEMI}.white.MNI.surf.gii \
+    ${FUNC_DIR}/mean_func_MNI.nii \
+    ${TMPDIR}/${HEMI}.white.MNI.dist.nii.gz
   wb_command -create-signed-distance-volume \
-    ${SURF_SUBJECTS_DIR}/${SUBJ}/surf/${HEMI}.pial.MNI.surf.gii \
-    ${FUNC_SUBJECTS_DIR}/${SUBJ}/mean_func_MNI.nii.gz \
-    HCP_pipeline_output/${HEMI}.pial.MNI.dist.nii.gz
-  fslmaths HCP_pipeline_output/${HEMI}.white.MNI.dist.nii.gz \
+    ${TMPDIR}/${HEMI}.pial.MNI.surf.gii \
+    ${FUNC_DIR}/mean_func_MNI.nii \
+    ${TMPDIR}/${HEMI}.pial.MNI.dist.nii.gz
+  fslmaths ${TMPDIR}/${HEMI}.white.MNI.dist.nii.gz \
     -thr 0 -bin -mul 255 \
-    HCP_pipeline_output/${HEMI}.white_thr0.MNI.dist.nii.gz
-  fslmaths HCP_pipeline_output/${HEMI}.white_thr0.MNI.dist.nii.gz \
-    -bin HCP_pipeline_output/${HEMI}.white_thr0.MNI.dist.nii.gz
-  fslmaths HCP_pipeline_output/${HEMI}.pial.MNI.dist.nii.gz \
+    ${TMPDIR}/${HEMI}.white_thr0.MNI.dist.nii.gz
+  fslmaths ${TMPDIR}/${HEMI}.white_thr0.MNI.dist.nii.gz \
+    -bin ${TMPDIR}/${HEMI}.white_thr0.MNI.dist.nii.gz
+  fslmaths ${TMPDIR}/${HEMI}.pial.MNI.dist.nii.gz \
     -uthr 0 -abs -bin \
-    -mul 255 HCP_pipeline_output/${HEMI}.pial_uthr0.MNI.dist.nii.gz
-  fslmaths HCP_pipeline_output/${HEMI}.pial_uthr0.MNI.dist.nii.gz \
-    -bin HCP_pipeline_output/${HEMI}.pial_uthr0.MNI.dist.nii.gz
-  fslmaths HCP_pipeline_output/${HEMI}.pial_uthr0.MNI.dist.nii.gz \
-    -mas HCP_pipeline_output/${HEMI}.white_thr0.MNI.dist.nii.gz \
-    -mul 255 HCP_pipeline_output/${HEMI}.ribbon.nii.gz
-  fslmaths HCP_pipeline_output/${HEMI}.ribbon.nii.gz \
-    -bin -mul 1 HCP_pipeline_output/${HEMI}.ribbon.nii.gz
+    -mul 255 ${TMPDIR}/${HEMI}.pial_uthr0.MNI.dist.nii.gz
+  fslmaths ${TMPDIR}/${HEMI}.pial_uthr0.MNI.dist.nii.gz \
+    -bin ${TMPDIR}/${HEMI}.pial_uthr0.MNI.dist.nii.gz
+  fslmaths ${TMPDIR}/${HEMI}.pial_uthr0.MNI.dist.nii.gz \
+    -mas ${TMPDIR}/${HEMI}.white_thr0.MNI.dist.nii.gz \
+    -mul 255 ${TMPDIR}/${HEMI}.ribbon.nii.gz
+  fslmaths ${TMPDIR}/${HEMI}.ribbon.nii.gz \
+    -bin -mul 1 ${TMPDIR}/${HEMI}.ribbon.nii.gz
 done
 
-fslmaths HCP_pipeline_output/lh.ribbon.nii.gz \
-  -add HCP_pipeline_output/rh.ribbon.nii.gz \
-  HCP_pipeline_output/ribbon_only.nii.gz
+fslmaths ${TMPDIR}/lh.ribbon.nii.gz \
+  -add ${TMPDIR}/rh.ribbon.nii.gz \
+  ${TMPDIR}/ribbon_only.nii.gz
  
 ####### 2-2. create a goodvoxel volume
 
 echo "create a goodvoxel volume..."
-fslmaths ${FUNC_SUBJECTS_DIR}/${SUBJ}/prepro_functional_MNI.nii.gz \
-  -Tmean HCP_pipeline_output/mean \
+fslmaths ${FUNC_DIR}/prepro_func_MNI.nii \
+  -Tmean ${TMPDIR}/mean \
   -odt float
-fslmaths ${FUNC_SUBJECTS_DIR}/${SUBJ}/prepro_functional_MNI.nii.gz \
-  -Tstd HCP_pipeline_output/std \
+fslmaths ${FUNC_DIR}/prepro_func_MNI.nii \
+  -Tstd ${TMPDIR}/std \
   -odt float
 
-fslmaths HCP_pipeline_output/std \
-  -div HCP_pipeline_output/mean \
-  HCP_pipeline_output/cov
-fslmaths HCP_pipeline_output/cov \
-  -mas HCP_pipeline_output/ribbon_only.nii.gz \
-  HCP_pipeline_output/cov_ribbon
-fslmaths HCP_pipeline_output/cov_ribbon \
-  -div `fslstats HCP_pipeline_output/cov_ribbon -M` \
-  HCP_pipeline_output/cov_ribbon_norm
-fslmaths HCP_pipeline_output/cov_ribbon_norm \
+fslmaths ${TMPDIR}/std \
+  -div ${TMPDIR}/mean \
+  ${TMPDIR}/cov
+fslmaths ${TMPDIR}/cov \
+  -mas ${TMPDIR}/ribbon_only.nii.gz \
+  ${TMPDIR}/cov_ribbon
+fslmaths ${TMPDIR}/cov_ribbon \
+  -div `fslstats ${TMPDIR}/cov_ribbon -M` \
+  ${TMPDIR}/cov_ribbon_norm
+fslmaths ${TMPDIR}/cov_ribbon_norm \
   -bin -s 5 \
-  HCP_pipeline_output/SmoothNorm
-fslmaths HCP_pipeline_output/cov_ribbon_norm \
+  ${TMPDIR}/SmoothNorm
+fslmaths ${TMPDIR}/cov_ribbon_norm \
   -s 5 \
-  -div HCP_pipeline_output/SmoothNorm -dilD \
-  HCP_pipeline_output/cov_ribbon_norm_s5
-fslmaths HCP_pipeline_output/cov \
-  -div `fslstats HCP_pipeline_output/cov_ribbon -M` \
-  -div HCP_pipeline_output/cov_ribbon_norm_s5 \
-  HCP_pipeline_output/cov_norm_modulate
+  -div ${TMPDIR}/SmoothNorm -dilD \
+  ${TMPDIR}/cov_ribbon_norm_s5
+fslmaths ${TMPDIR}/cov \
+  -div `fslstats ${TMPDIR}/cov_ribbon -M` \
+  -div ${TMPDIR}/cov_ribbon_norm_s5 \
+  ${TMPDIR}/cov_norm_modulate
 
-STD=`fslstats HCP_pipeline_output/cov_norm_modulate -S`
-MEAN=`fslstats HCP_pipeline_output/cov_norm_modulate -M`
+STD=`fslstats ${TMPDIR}/cov_norm_modulate -S`
+MEAN=`fslstats ${TMPDIR}/cov_norm_modulate -M`
 Lower=`echo "$MEAN - ($STD * 0.5)" | bc -l`
 Upper=`echo "$MEAN + ($STD * 0.5)" | bc -l`
 
-fslmaths HCP_pipeline_output/cov_norm_modulate \
-  -mas HCP_pipeline_output/ribbon_only.nii.gz \
-  HCP_pipeline_output/cov_norm_modulate_ribbon
+fslmaths ${TMPDIR}/cov_norm_modulate \
+  -mas ${TMPDIR}/ribbon_only.nii.gz \
+  ${TMPDIR}/cov_norm_modulate_ribbon
+
 fslmaths \
-  ${FUNC_SUBJECTS_DIR}/${SUBJ}/mean_func_MNI.nii.gz \
+  ${TMPDIR}/mean \
+  -abs \
   -bin \
-  HCP_pipeline_output/mask
+  ${TMPDIR}/mask
+
 fslmaths \
-  HCP_pipeline_output/cov_norm_modulate \
-  -thr $Upper -bin -sub HCP_pipeline_output/mask -mul -1 \
-  HCP_pipeline_output/goodvoxels
+  ${TMPDIR}/cov_norm_modulate \
+  -thr $Upper -bin -sub ${TMPDIR}/mask -mul -1 \
+  ${TMPDIR}/goodvoxels

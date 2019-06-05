@@ -16,166 +16,138 @@ show_usage() {
   exit 1
 }
 
-SURF_SUBJECTS_DIR="/home/hw1012/Project_surface_downsampling/data/surf"
-FUNC_SUBJECTS_DIR="/home/hw1012/Project_surface_downsampling/data/vol"
-TemplateFolder="/home/hw1012/HCPpipelines/global/templates"
-HCPPIPEDIR="/home/hw1012/HCPpipelines"
+SUBJ=${1}
+
+HOME="/home/hw1012"
+WDIR="${HOME}/HCP_downsampling"
+DATA_DIR="${WDIR}/data"
+HCP_STANDARD_DIR="/home/hw1012/HCPpipelines/global/templates"
+HCP_CONFIG_DIR="/home/hw1012/HCPpipelines/global/config"
 FSL_STANDARD_DIR="/usr/local/fsl/data/standard"
+SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
+FUNC_DIR="${DATA_DIR}/interim/${SUBJ}"
+TMPDIR="${DATA_DIR}/tmp"
+OUTDIR="${DATA_DIR}/processed/${SUBJ}"
+
+cd ${WDIR}
 DOWNSAMPLE_MESH=5
 SmoothingFWHM=3
 Sigma=$(echo "$SmoothingFWHM / ( 2 * ( sqrt ( 2 * l ( 2 ) ) ) )" | bc -l)
-
-export SUBJECTS_DIR=${SURF_SUBJECTS_DIR}
-SUBJ=${1}
-WDIR=${FUNC_SUBJECTS_DIR}/${SUBJ}/HCP_pipeline_output
-
-cd ${WDIR}
 ####### 2-4. sample subcortical time series data on the surface
 ####### 2-4-1) convert FreeSurfer Volumes
 mri_convert \
   -rt nearest \
-  -rl ${SURF_SUBJECTS_DIR}/${SUBJ}/mri/brain.nii.gz \
-  ${SURF_SUBJECTS_DIR}/${SUBJ}/mri/wmparc.mgz ${WDIR}/wmparc.nii.gz \
+  -rl ${OUTDIR}/fs_highres.nii.gz \
+  ${SURF_DIR}/mri/wmparc.mgz \
+  ${TMPDIR}/wmparc.nii.gz \
   -odt float
-fslreorient2std ${WDIR}/wmparc.nii.gz ${WDIR}/wmparc_reo.nii.gz
+fslreorient2std ${TMPDIR}/wmparc.nii.gz ${TMPDIR}/wmparc_reo.nii.gz
 applywarp \
   --rel --interp=nn \
-  -i ${WDIR}/wmparc_reo.nii.gz \
-  -r ${SURF_SUBJECTS_DIR}/${SUBJ}/mri/brain2MNI.nii.gz \
-  -w ${SURF_SUBJECTS_DIR}/${SUBJ}/mri/transforms/fs_highres2standard_warp.nii.gz \
-  -o ${WDIR}/wmparc_reo2MNI_nlwarp_nii.nii.gz
+  -i ${TMPDIR}/wmparc_reo.nii.gz \
+  -r ${OUTDIR}/fs_highres2MNI.nii.gz \
+  -w ${OUTDIR}/fs_highres2standard_warp.nii.gz \
+  -o ${TMPDIR}/wmparc_reo2MNI_nlwarp_nii.nii.gz
 wb_command -volume-label-import \
-  ${WDIR}/wmparc_reo.nii.gz \
-  ${HCPPIPEDIR}/global/config/FreeSurferAllLut.txt \
-  ${WDIR}/wmparc_reo.nii.gz \
+  ${TMPDIR}/wmparc_reo.nii.gz \
+  ${HCP_CONFIG_DIR}/FreeSurferAllLut.txt \
+  ${TMPDIR}/wmparc_reo.nii.gz \
   -drop-unused-labels
 wb_command -volume-label-import \
-  ${WDIR}/wmparc_reo2MNI_nlwarp_nii.nii.gz \
-  ${HCPPIPEDIR}/global/config/FreeSurferAllLut.txt \
-  ${WDIR}/wmparc_reo2MNI_nlwarp_nii.nii.gz \
+  ${TMPDIR}/wmparc_reo2MNI_nlwarp_nii.nii.gz \
+  ${HCP_CONFIG_DIR}/FreeSurferAllLut.txt \
+  ${TMPDIR}/wmparc_reo2MNI_nlwarp_nii.nii.gz \
   -drop-unused-labels
 
 
 ####### 2-4-2) import Subcortical ROIs
 applywarp \
   --interp=nn \
-  -i ${WDIR}/wmparc_reo2MNI_nlwarp_nii.nii.gz \
-  -r ${TemplateFolder}/91282_Greyordinates/Atlas_ROIs.5.nii.gz \
-  -o ${WDIR}/wmparc_reo2MNI_nlwarp.5.nii.gz
+  -i ${TMPDIR}/wmparc_reo2MNI_nlwarp_nii.nii.gz \
+  -r ${HCP_STANDARD_DIR}/91282_Greyordinates/Atlas_ROIs.5.nii.gz \
+  -o ${TMPDIR}/wmparc_reo2MNI_nlwarp.5.nii.gz
 wb_command -volume-label-import \
-  ${WDIR}/wmparc_reo2MNI_nlwarp.5.nii.gz \
-  ${HCPPIPEDIR}/global/config/FreeSurferAllLut.txt \
-  ${WDIR}/wmparc_reo2MNI_nlwarp.5.nii.gz \
+  ${TMPDIR}/wmparc_reo2MNI_nlwarp.5.nii.gz \
+  ${HCP_CONFIG_DIR}/FreeSurferAllLut.txt \
+  ${TMPDIR}/wmparc_reo2MNI_nlwarp.5.nii.gz \
   -drop-unused-labels
 applywarp \
   --interp=nn -i \
-  ${TemplateFolder}/standard_mesh_atlases/Avgwmparc.nii.gz \
-  -r ${WDIR}/wmparc_reo2MNI_nlwarp.5.nii.gz \
-  -o ${WDIR}/Atlas_wmparc.5.nii.gz
+  ${HCP_STANDARD_DIR}/standard_mesh_atlases/Avgwmparc.nii.gz \
+  -r ${TMPDIR}/wmparc_reo2MNI_nlwarp.5.nii.gz \
+  -o ${TMPDIR}/Atlas_wmparc.5.nii.gz
 wb_command -volume-label-import \
-  ${WDIR}/Atlas_wmparc.5.nii.gz \
-  ${HCPPIPEDIR}/global/config/FreeSurferAllLut.txt \
-  ${WDIR}/Atlas_wmparc.5.nii.gz \
+  ${TMPDIR}/Atlas_wmparc.5.nii.gz \
+  ${HCP_CONFIG_DIR}/FreeSurferAllLut.txt \
+  ${TMPDIR}/Atlas_wmparc.5.nii.gz \
   -drop-unused-labels
 wb_command -volume-label-import \
-  ${WDIR}/wmparc_reo2MNI_nlwarp.5.nii.gz \
-  ${HCPPIPEDIR}/global/config/FreeSurferSubcorticalLabelTableLut.txt \
-  ${WDIR}/ROIs.5.nii.gz \
+  ${TMPDIR}/wmparc_reo2MNI_nlwarp.5.nii.gz \
+  ${HCP_CONFIG_DIR}/FreeSurferSubcorticalLabelTableLut.txt \
+  ${TMPDIR}/ROIs.5.nii.gz \
   -discard-others
 
 ####### 2-4-3) create subject-roi subcortical cifti at same resolution as output
 wb_command -volume-affine-resample \
-  ${WDIR}/ROIs.5.nii.gz \
-  $FSLDIR/etc/flirtsch/ident.mat \
-  ${FUNC_SUBJECTS_DIR}/${SUBJ}/prepro_functional_MNI.nii.gz \
+  ${TMPDIR}/ROIs.5.nii.gz \
+  ${FSLDIR}/etc/flirtsch/ident.mat \
+  ${FUNC_DIR}/prepro_func_MNI.nii \
   ENCLOSING_VOXEL \
-  ${WDIR}/ROIs.5.func.nii.gz
+  ${TMPDIR}/ROIs.5.func.nii.gz
 wb_command -cifti-create-dense-timeseries \
-  ${WDIR}/_temp.dtseries.nii \
+  ${TMPDIR}/_temp.dtseries.nii \
   -volume \
-  ${FUNC_SUBJECTS_DIR}/${SUBJ}/prepro_functional_MNI.nii.gz \
-  ${WDIR}/ROIs.5.func.nii.gz
+  ${FUNC_DIR}/prepro_func_MNI.nii \
+  ${TMPDIR}/ROIs.5.func.nii.gz
 
 echo "wb_command: Dilating out zeros"
 wb_command -cifti-dilate \
-  ${WDIR}/_temp.dtseries.nii \
+  ${TMPDIR}/_temp.dtseries.nii \
   COLUMN 0 10 \
-  ${WDIR}/_temp_dilate.dtseries.nii
+  ${TMPDIR}/_temp_dilate.dtseries.nii
 
 echo "wb_command: Generate atlas subcortical template cifti"
 wb_command -cifti-create-label \
-  ${WDIR}/_temp_template.dlabel.nii \
+  ${TMPDIR}/_temp_template.dlabel.nii \
   -volume \
-  ${TemplateFolder}/91282_Greyordinates/Atlas_ROIs.5.nii.gz  \
-  ${TemplateFolder}/91282_Greyordinates/Atlas_ROIs.5.nii.gz
+  ${HCP_STANDARD_DIR}/91282_Greyordinates/Atlas_ROIs.5.nii.gz  \
+  ${HCP_STANDARD_DIR}/91282_Greyordinates/Atlas_ROIs.5.nii.gz
 
 echo "wb_command: Smoothing and resampling"
 #this is the whole timeseries, so don't overwrite, in order to allow on-disk writing, then delete temporary
 wb_command -cifti-smoothing \
-  ${WDIR}/_temp_dilate.dtseries.nii 0 \
-  ${Sigma} COLUMN ${WDIR}/_temp_subject_smooth.dtseries.nii \
+  ${TMPDIR}/_temp_dilate.dtseries.nii 0 \
+  ${Sigma} COLUMN ${TMPDIR}/_temp_subject_smooth.dtseries.nii \
   -fix-zeros-volume
 #resample
 wb_command -cifti-resample \
-  ${WDIR}/_temp_subject_smooth.dtseries.nii \
+  ${TMPDIR}/_temp_subject_smooth.dtseries.nii \
   COLUMN \
-  ${WDIR}/_temp_template.dlabel.nii \
+  ${TMPDIR}/_temp_template.dlabel.nii \
   COLUMN ADAP_BARY_AREA CUBIC \
-  ${WDIR}/_temp_atlas.dtseries.nii \
+  ${TMPDIR}/_temp_atlas.dtseries.nii \
   -volume-predilate 10
 
 ####### 2-4-4) write output volume
 wb_command -cifti-separate \
-  ${WDIR}/_temp_atlas.dtseries.nii \
+  ${TMPDIR}/_temp_atlas.dtseries.nii \
   COLUMN \
   -volume-all \
-  ${WDIR}/func_AtlasSubcortical_s${SmoothingFWHM}.nii.gz
+  ${OUTDIR}/func_AtlasSubcortical_s${SmoothingFWHM}.nii.gz
 
 ####### 2-4-5) concate cortical and subcortical time series
-TR_vol=`fslval ${FUNC_SUBJECTS_DIR}/${SUBJ}/prepro_functional_MNI.nii.gz pixdim4 | cut -d " " -f 1`
+TR_vol=`fslval ${FUNC_DIR}/prepro_func_MNI.nii pixdim4 | cut -d " " -f 1`
 
 wb_command -cifti-create-dense-timeseries \
-  ${WDIR}/func.dtseries.nii \
-  -volume ${WDIR}/_func_AtlasSubcortical_s${SmoothingFWHM}.nii.gz \
-  ${TemplateFolder}/91282_Greyordinates/Atlas_ROIs.5.nii.gz \
-  -left-metric ${WDIR}/lh.s${SmoothingFWHM}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.func.gii \
-  -roi-left ${WDIR}/lh.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.shape.gii \
-  -right-metric ${WDIR}/rh.s${SmoothingFWHM}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.func.gii \
-  -roi-right ${WDIR}/rh.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.shape.gii \
+  ${OUTDIR}/func.dtseries.nii \
+  -volume ${OUTDIR}/func_AtlasSubcortical_s${SmoothingFWHM}.nii.gz \
+  ${HCP_STANDARD_DIR}/91282_Greyordinates/Atlas_ROIs.5.nii.gz \
+  -left-metric ${OUTDIR}/lh.s${SmoothingFWHM}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.func.gii \
+  -roi-left ${HCP_STANDARD_DIR}/91282_Greyordinates/L.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.shape.gii \
+  -right-metric ${OUTDIR}/rh.s${SmoothingFWHM}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.func.gii \
+  -roi-right ${HCP_STANDARD_DIR}/91282_Greyordinates/R.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.shape.gii \
   -timestep $TR_vol
 
 # clean files
 
-rm -rf ${WDIR}/_temp*
-
-rm -rf ${WDIR}/cov*
-rm -rf ${WDIR}/mean.nii.gz
-rm -rf ${WDIR}/std.nii.gz
-rm -rf ${WDIR}/goodvoxels.nii.gz
-rm -rf ${WDIR}/ribbon_only.nii.gz
-rm -rf ${WDIR}/ROIs.5.nii.gz
-rm -rf ${WDIR}/ROIs.5.func.nii.gz
-rm -rf ${WDIR}/SmoothNorm.nii.gz
-rm -rf ${WDIR}/mask.nii.gz
-rm -rf ${WDIR}/Atlas_wmparc.5.nii.gz
-rm -rf ${WDIR}/wmparc*
-
-rm -rf ${WDIR}/?h.atlasroi.164k_fs_LR.surf.gii
-rm -rf ${WDIR}/?h.def_sphere.164k_fs_l.surf.gii
-rm -rf ${WDIR}/?h.goodvoxels.5k_fs_LR.MNI.func.gii
-rm -rf ${WDIR}/?h.goodvoxels.MNI.func.gii
-rm -rf ${WDIR}/?h.pial.MNI.dist.nii.gz
-rm -rf ${WDIR}/?h.pial_uthr0.MNI.dist.nii.gz
-rm -rf ${WDIR}/?h.ribbon.nii.gz
-rm -rf ${WDIR}/?h.roi.native.shape.gii
-rm -rf ${WDIR}/?h.thickness.native.shape.gii
-rm -rf ${WDIR}/?h.timeseries.MNI.func.gii
-rm -rf ${WDIR}/?h.white.MNI.dist.nii.gz
-rm -rf ${WDIR}/?h.white_thr0.MNI.dist.nii.gz
-
-rm -rf ?h.sphere.164k_*.surf.gii
-rm -rf ?h.def_sphere.164k_*.surf.gii
-rm -rf ?h.sphere.164k_fs_LR.surf.gii
-rm -rf ?h.atlasroi.164k_fs_LR.surf.gii
-rm -rf ?h.sphere.5k_fs_LR.surf.gii
-rm -rf ?h.atlasroi.5k_fs_LR.shape.gii
+rm -rf ${TMPDIR}/*
