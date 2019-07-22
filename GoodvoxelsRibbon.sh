@@ -27,6 +27,7 @@ FSL_STANDARD_DIR="/usr/local/fsl/data/standard"
 SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
 FUNC_DIR="${DATA_DIR}/interim/${SUBJ}"
 TMPDIR="${DATA_DIR}/tmp"
+OUTDIR="${DATA_DIR}/processed/${SUBJ}"
 
 cd ${WDIR}
 
@@ -36,11 +37,11 @@ echo "Creating cortical ribbons for ${SUBJ}..."
 for HEMI in lh rh ; do
 
   wb_command -create-signed-distance-volume \
-    ${TMPDIR}/${HEMI}.white.MNI.surf.gii \
+    ${OUTDIR}/${HEMI}.white.MNI.surf.gii \
     ${FUNC_DIR}/mean_func_MNI.nii \
     ${TMPDIR}/${HEMI}.white.MNI.dist.nii.gz
   wb_command -create-signed-distance-volume \
-    ${TMPDIR}/${HEMI}.pial.MNI.surf.gii \
+    ${OUTDIR}/${HEMI}.pial.MNI.surf.gii \
     ${FUNC_DIR}/mean_func_MNI.nii \
     ${TMPDIR}/${HEMI}.pial.MNI.dist.nii.gz
   fslmaths ${TMPDIR}/${HEMI}.white.MNI.dist.nii.gz \

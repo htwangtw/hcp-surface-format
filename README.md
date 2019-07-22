@@ -35,9 +35,7 @@ Only need to run these files once
 
 ## To do
  - documantations
- - CONN/SPM output competablility
  - Batch processing script
  - Environment setup details
  - Test on YNiC server
  - create scene files for viewing
- - symbolic links to final result files

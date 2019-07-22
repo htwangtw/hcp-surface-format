@@ -1,10 +1,22 @@
-#!/bin/bash
-set -e
+#!/bin/bash - 
+#===============================================================================
 #
-#  environment: FSL and freesurfer binary added to path
-# --------------------------------------------------------------------------------
-#  Usage Description Function
-# --------------------------------------------------------------------------------
+#          FILE: GiftiReady.sh
+# 
+#         USAGE: ./GiftiReady.sh 
+# 
+#   DESCRIPTION: Convert Freesurfer recon_all output  to GIFTI format 
+# 
+#       OPTIONS: ---
+#  REQUIREMENTS: ---
+#          BUGS: ---
+#         NOTES: ---
+#        AUTHOR: Hao-Ting Wang (PostDoc), htwangtw@gmail.com
+#  ORGANIZATION: University of York
+#       CREATED: 08/06/19 12:52:11
+#      REVISION:  ---
+#===============================================================================
+
 show_usage() {
   echo " This is a basic script to prepare freesurfer files ready for HCP pipeline."
   echo " The freesurfer files should be created through recon_all"
@@ -12,7 +24,7 @@ show_usage() {
   echo " The output files will be generated under the tmp/ directory"
   echo ""
   echo " Usage:"
-  echo " 	  prep_fs_gifti.sh <R number> "
+  echo " 	  GiftiReady.sh <R number> "
   exit 1
 }
 

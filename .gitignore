@@ -17,6 +17,7 @@ data/
 *.vcf
 *.xml
 references/
+results/
 
 ### VisualStudioCode ###
 .vscode/*

@@ -150,4 +150,4 @@ wb_command -cifti-create-dense-timeseries \
 
 # clean files
 
-rm -rf ${TMPDIR}/*
+# rm -rf ${TMPDIR}/*

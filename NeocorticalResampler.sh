@@ -24,7 +24,7 @@ HCP_STANDARD_DIR="/home/hw1012/HCPpipelines/global/templates"
 FSL_STANDARD_DIR="/usr/local/fsl/data/standard"
 SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
 FUNC_DIR="${DATA_DIR}/interim/${SUBJ}"
-OUTDIR="${DATA_DIR}/tmp"
+TMPDIR="${DATA_DIR}/tmp"
 OUTDIR="${DATA_DIR}/processed/${SUBJ}"
 
 cd ${WDIR}
@@ -49,29 +49,29 @@ for HEMI in lh rh ; do
   mris_convert \
     -c ${SURF_DIR}/surf/${HEMI}.thickness \
     ${SURF_DIR}/surf/${HEMI}.white \
-    ${OUTDIR}/${HEMI}.thickness.native.shape.gii
+    ${TMPDIR}/${HEMI}.thickness.native.shape.gii
   wb_command -set-structure \
-    ${OUTDIR}/${HEMI}.thickness.native.shape.gii \
+    ${TMPDIR}/${HEMI}.thickness.native.shape.gii \
     CORTEX_${HEMI_str}
   wb_command -metric-math \
-    "var * -1" ${OUTDIR}/${HEMI}.thickness.native.shape.gii \
+    "var * -1" ${TMPDIR}/${HEMI}.thickness.native.shape.gii \
     -var var \
-    ${OUTDIR}/${HEMI}.thickness.native.shape.gii
+    ${TMPDIR}/${HEMI}.thickness.native.shape.gii
   wb_command -set-map-names \
-    ${OUTDIR}/${HEMI}.thickness.native.shape.gii -map 1 \
+    ${TMPDIR}/${HEMI}.thickness.native.shape.gii -map 1 \
     ${HEMI}_Thickness
   wb_command -metric-palette \
-    ${OUTDIR}/${HEMI}.thickness.native.shape.gii \
+    ${TMPDIR}/${HEMI}.thickness.native.shape.gii \
     MODE_AUTO_SCALE_PERCENTAGE \
     -pos-percent 2 98 \
     -palette-name Gray_Interp \
     -disp-pos true -disp-neg true -disp-zero true
   wb_command -metric-math \
-    "abs(thickness)" ${OUTDIR}/${HEMI}.thickness.native.shape.gii \
+    "abs(thickness)" ${TMPDIR}/${HEMI}.thickness.native.shape.gii \
     -var thickness \
-    ${OUTDIR}/${HEMI}.thickness.native.shape.gii
+    ${TMPDIR}/${HEMI}.thickness.native.shape.gii
   wb_command -metric-palette \
-    ${OUTDIR}/${HEMI}.thickness.native.shape.gii \
+    ${TMPDIR}/${HEMI}.thickness.native.shape.gii \
     MODE_AUTO_SCALE_PERCENTAGE \
     -pos-percent 4 96 \
     -interpolate true \
@@ -79,19 +79,19 @@ for HEMI in lh rh ; do
     -disp-pos true -disp-neg false -disp-zero false
 
   wb_command -metric-math \
-    "thickness > 0" ${OUTDIR}/${HEMI}.roi.native.shape.gii \
+    "thickness > 0" ${TMPDIR}/${HEMI}.roi.native.shape.gii \
     -var thickness \
-    ${OUTDIR}/${HEMI}.thickness.native.shape.gii
+    ${TMPDIR}/${HEMI}.thickness.native.shape.gii
   wb_command -metric-fill-holes \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
-    ${OUTDIR}/${HEMI}.roi.native.shape.gii \
-    ${OUTDIR}/${HEMI}.roi.native.shape.gii
+    ${TMPDIR}/${HEMI}.roi.native.shape.gii \
+    ${TMPDIR}/${HEMI}.roi.native.shape.gii
   wb_command -metric-remove-islands \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
-    ${OUTDIR}/${HEMI}.roi.native.shape.gii \
-    ${OUTDIR}/${HEMI}.roi.native.shape.gii
+    ${TMPDIR}/${HEMI}.roi.native.shape.gii \
+    ${TMPDIR}/${HEMI}.roi.native.shape.gii
   wb_command -set-map-names \
-    ${OUTDIR}/${HEMI}.roi.native.shape.gii \
+    ${TMPDIR}/${HEMI}.roi.native.shape.gii \
     -map 1 ${HEMI}_ROI
 
   ####### 2-3-2) concatenate a FS sphere-reg to HCP conte69 sphere to make a left-right symmetric surface template and resample cortical surfaces into the template mesh configuration
@@ -135,60 +135,60 @@ for HEMI in lh rh ; do
   echo "2.3.3"
   ####### 2-3-3) resample the goodvoxels using a concatenated surface registration field (sampling a goodvoxel, mask it and resample)
   wb_command -volume-to-surface-mapping \
-    ${OUTDIR}/goodvoxels.nii.gz \
+    ${TMPDIR}/goodvoxels.nii.gz \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
-    ${OUTDIR}/${HEMI}.goodvoxels.MNI.func.gii \
+    ${TMPDIR}/${HEMI}.goodvoxels.MNI.func.gii \
     -ribbon-constrained \
     ${OUTDIR}/${HEMI}.white.MNI.surf.gii \
     ${OUTDIR}/${HEMI}.pial.MNI.surf.gii
 
   wb_command -metric-mask \
-    ${OUTDIR}/${HEMI}.goodvoxels.MNI.func.gii \
+    ${TMPDIR}/${HEMI}.goodvoxels.MNI.func.gii \
     ${OUTDIR}/${HEMI}.roi.native.shape.gii \
-    ${OUTDIR}/${HEMI}.goodvoxels.MNI.func.gii
+    ${TMPDIR}/${HEMI}.goodvoxels.MNI.func.gii
 
   wb_command -metric-resample \
-    ${OUTDIR}/${HEMI}.goodvoxels.MNI.func.gii \
+    ${TMPDIR}/${HEMI}.goodvoxels.MNI.func.gii \
     ${OUTDIR}/${HEMI}.sphere.reg.reg_LR.native.surf.gii \
     ${HCP_STANDARD_DIR}/standard_mesh_atlases/${FS_RL_FILE2}.sphere.${DOWNSAMPLE_MESH}k_fs_LR.surf.gii \
     ADAP_BARY_AREA \
-    ${OUTDIR}/${HEMI}.goodvoxels.${DOWNSAMPLE_MESH}k_fs_LR.MNI.func.gii \
+    ${TMPDIR}/${HEMI}.goodvoxels.${DOWNSAMPLE_MESH}k_fs_LR.MNI.func.gii \
     -area-surfs \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
     ${OUTDIR}/${HEMI}.mid.${DOWNSAMPLE_MESH}k_fs_LR.MNI.surf.gii \
     -current-roi ${OUTDIR}/${HEMI}.roi.native.shape.gii
 
   wb_command -metric-mask \
-    ${OUTDIR}/${HEMI}.goodvoxels.${DOWNSAMPLE_MESH}k_fs_LR.MNI.func.gii \
+    ${TMPDIR}/${HEMI}.goodvoxels.${DOWNSAMPLE_MESH}k_fs_LR.MNI.func.gii \
     ${HCP_STANDARD_DIR}/91282_Greyordinates/${FS_RL_FILE2}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.shape.gii  \
-    ${OUTDIR}/${HEMI}.goodvoxels.${DOWNSAMPLE_MESH}k_fs_LR.MNI.func.gii
+    ${TMPDIR}/${HEMI}.goodvoxels.${DOWNSAMPLE_MESH}k_fs_LR.MNI.func.gii
 
   echo "2.3.4"
   ####### 2-3-4) resample the time series using a concatenated surface registration field (sampling time series, mask it and resample)
   wb_command -volume-to-surface-mapping \
     ${FUNC_DIR}/prepro_func_MNI.nii \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
-    ${OUTDIR}/${HEMI}.timeseries.MNI.func.gii \
+    ${TMPDIR}/${HEMI}.timeseries.MNI.func.gii \
     -ribbon-constrained \
     ${OUTDIR}/${HEMI}.white.MNI.surf.gii \
     ${OUTDIR}/${HEMI}.pial.MNI.surf.gii \
-    -volume-roi ${OUTDIR}/goodvoxels.nii.gz
+    -volume-roi ${TMPDIR}/goodvoxels.nii.gz
 
   wb_command -metric-dilate \
-    ${OUTDIR}/${HEMI}.timeseries.MNI.func.gii \
+    ${TMPDIR}/${HEMI}.timeseries.MNI.func.gii \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
     10 \
-    ${OUTDIR}/${HEMI}.timeseries.MNI.func.gii \
+    ${TMPDIR}/${HEMI}.timeseries.MNI.func.gii \
     -nearest
 
   wb_command -metric-mask \
-    ${OUTDIR}/${HEMI}.timeseries.MNI.func.gii \
+    ${TMPDIR}/${HEMI}.timeseries.MNI.func.gii \
     ${OUTDIR}/${HEMI}.roi.native.shape.gii \
-    ${OUTDIR}/${HEMI}.timeseries.MNI.func.gii
+    ${TMPDIR}/${HEMI}.timeseries.MNI.func.gii
 
   echo "Resample timeseries"
   wb_command -metric-resample \
-    ${OUTDIR}/${HEMI}.timeseries.MNI.func.gii \
+    ${TMPDIR}/${HEMI}.timeseries.MNI.func.gii \
     ${OUTDIR}/${HEMI}.sphere.reg.reg_LR.native.surf.gii \
     ${HCP_STANDARD_DIR}/standard_mesh_atlases/${FS_RL_FILE2}.sphere.${DOWNSAMPLE_MESH}k_fs_LR.surf.gii \
     ADAP_BARY_AREA \
