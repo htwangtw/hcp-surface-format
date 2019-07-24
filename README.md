@@ -24,18 +24,11 @@ Connectome workbench
 ## Order
 ### common space template
 Only need to run these files once
-1. createNewTemplateSpace.sh
-2. downsample_template_generator.sh
+1. CreateNewResTemplate.sh
+2. DownsampleGroupTemplate.sh
 
 ### subject preprocessing
-1. prep_fs_gifti.sh
-2. goodvoxels_ribbon.sh
-3. neocortical_resampler.sh
-4. subcortical_resampler.sh
-
-## To do
- - documantations
- - Batch processing script
- - Environment setup details
- - Test on YNiC server
- - create scene files for viewing
+1. GiftiReady.sh
+2. GoodvoxelsRibbon.sh
+3. NeocorticalResampler.sh
+4. SubcorticalResampler.sh
