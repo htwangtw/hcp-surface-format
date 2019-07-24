@@ -1,15 +1,11 @@
 #!/bin/bash
 set -e
 #
-#  environment: FSL and freesurfer binary added to path
 # --------------------------------------------------------------------------------
 #  Usage Description Function
 # --------------------------------------------------------------------------------
 show_usage() {
-  echo " This is a basic script to prepare freesurfer files ready for HCP pipeline."
-  echo " The freesurfer files should be created through recon_all"
-  echo " and the white mater surface should have been manually checked. "
-  echo " The output files will be generated under the freesurfer directory surf/ and mri/"
+  echo " Sample neocortical time series data to HCP format"
   echo ""
   echo " Usage:"
   echo " 	  neocortical_resampler.sh <R number> "
@@ -17,15 +13,22 @@ show_usage() {
 }
 SUBJ=${1}
 
-HOME="/home/hw1012"
-WDIR="${HOME}/HCP_downsampling"
+WDIR="/groups/labs/semwandering/Cohort_HCPpipeline"
 DATA_DIR="${WDIR}/data"
-HCP_STANDARD_DIR="/home/hw1012/HCPpipelines/global/templates"
-FSL_STANDARD_DIR="/usr/local/fsl/data/standard"
+HCP_STANDARD_DIR="${DATA_DIR}/external/HCPpipelines_global/templates/"
+FSL_STANDARD_DIR="/usr/share/fsl-5.0/data/standard"
 SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
 FUNC_DIR="${DATA_DIR}/interim/${SUBJ}"
-TMPDIR="${DATA_DIR}/tmp"
+TMPDIR="${DATA_DIR}/tmp/${SUBJ}"
 OUTDIR="${DATA_DIR}/processed/${SUBJ}"
+FSLDIR="/usr/share/fsl-5.0"
+. $FSLDIR/etc/fslconf/fsl.sh
+
+# initialise freesurfer
+. /etc/freesurfer/5.3/freesurfer.sh
+# initialize fsl
+export FSLDIR="/usr/share/fsl-5.0"
+
 
 cd ${WDIR}
 DOWNSAMPLE_MESH=5
@@ -44,8 +47,8 @@ for HEMI in lh rh ; do
     FS_RL_FILE='fs_l';
     FS_RL_FILE2='L';
   fi
-
-  ####### 2-3-1) make a cortical roi mask (exclude a medial wall)
+  echo "$HEMI"
+  echo "make a cortical roi mask (exclude a medial wall)"
   mris_convert \
     -c ${SURF_DIR}/surf/${HEMI}.thickness \
     ${SURF_DIR}/surf/${HEMI}.white \
@@ -94,8 +97,10 @@ for HEMI in lh rh ; do
     ${TMPDIR}/${HEMI}.roi.native.shape.gii \
     -map 1 ${HEMI}_ROI
 
-  ####### 2-3-2) concatenate a FS sphere-reg to HCP conte69 sphere to make a left-right symmetric surface template and resample cortical surfaces into the template mesh configuration
-  echo "2.3.2"
+  # concatenate a FS sphere-reg to HCP conte69 sphere 
+  # to make a left-right symmetric surface template 
+  # and resample cortical surfaces into the template mesh configuration
+  echo "concatenate a FS sphere-reg to HCP conte69 sphere"
   mris_convert ${SURF_DIR}/surf/${HEMI}.sphere.reg \
     ${OUTDIR}/${HEMI}.sphere.reg.native.surf.gii
   wb_command -set-structure \
@@ -132,8 +137,9 @@ for HEMI in lh rh ; do
     ${HCP_STANDARD_DIR}/standard_mesh_atlases/${FS_RL_FILE2}.sphere.${DOWNSAMPLE_MESH}k_fs_LR.surf.gii \
     BARYCENTRIC \
     ${OUTDIR}/${HEMI}.pial.${DOWNSAMPLE_MESH}k_fs_LR.MNI.surf.gii
-  echo "2.3.3"
-  ####### 2-3-3) resample the goodvoxels using a concatenated surface registration field (sampling a goodvoxel, mask it and resample)
+    
+  echo "resample the goodvoxels"
+  # using a concatenated surface registration field (sampling a goodvoxel, mask it and resample)
   wb_command -volume-to-surface-mapping \
     ${TMPDIR}/goodvoxels.nii.gz \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
@@ -144,7 +150,7 @@ for HEMI in lh rh ; do
 
   wb_command -metric-mask \
     ${TMPDIR}/${HEMI}.goodvoxels.MNI.func.gii \
-    ${OUTDIR}/${HEMI}.roi.native.shape.gii \
+    ${TMPDIR}/${HEMI}.roi.native.shape.gii \
     ${TMPDIR}/${HEMI}.goodvoxels.MNI.func.gii
 
   wb_command -metric-resample \
@@ -156,15 +162,15 @@ for HEMI in lh rh ; do
     -area-surfs \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
     ${OUTDIR}/${HEMI}.mid.${DOWNSAMPLE_MESH}k_fs_LR.MNI.surf.gii \
-    -current-roi ${OUTDIR}/${HEMI}.roi.native.shape.gii
+    -current-roi ${TMPDIR}/${HEMI}.roi.native.shape.gii
 
   wb_command -metric-mask \
     ${TMPDIR}/${HEMI}.goodvoxels.${DOWNSAMPLE_MESH}k_fs_LR.MNI.func.gii \
     ${HCP_STANDARD_DIR}/91282_Greyordinates/${FS_RL_FILE2}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.shape.gii  \
     ${TMPDIR}/${HEMI}.goodvoxels.${DOWNSAMPLE_MESH}k_fs_LR.MNI.func.gii
 
-  echo "2.3.4"
-  ####### 2-3-4) resample the time series using a concatenated surface registration field (sampling time series, mask it and resample)
+  echo "resample the time series"
+  # using a concatenated surface registration field (sampling time series, mask it and resample)
   wb_command -volume-to-surface-mapping \
     ${FUNC_DIR}/prepro_func_MNI.nii \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
@@ -183,10 +189,9 @@ for HEMI in lh rh ; do
 
   wb_command -metric-mask \
     ${TMPDIR}/${HEMI}.timeseries.MNI.func.gii \
-    ${OUTDIR}/${HEMI}.roi.native.shape.gii \
+    ${TMPDIR}/${HEMI}.roi.native.shape.gii \
     ${TMPDIR}/${HEMI}.timeseries.MNI.func.gii
 
-  echo "Resample timeseries"
   wb_command -metric-resample \
     ${TMPDIR}/${HEMI}.timeseries.MNI.func.gii \
     ${OUTDIR}/${HEMI}.sphere.reg.reg_LR.native.surf.gii \
@@ -196,7 +201,7 @@ for HEMI in lh rh ; do
     -area-surfs \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
     ${OUTDIR}/${HEMI}.mid.${DOWNSAMPLE_MESH}k_fs_LR.MNI.surf.gii \
-    -current-roi ${OUTDIR}/${HEMI}.roi.native.shape.gii
+    -current-roi ${TMPDIR}/${HEMI}.roi.native.shape.gii
 
   wb_command -metric-mask \
     ${OUTDIR}/${HEMI}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.func.gii \
@@ -204,8 +209,7 @@ for HEMI in lh rh ; do
     ${OUTDIR}/${HEMI}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.func.gii
 
 
-####### 2-3-5) smooth the values
-  echo "2.3.5"
+  echo "smooth the values"
   wb_command -metric-smoothing \
     ${OUTDIR}/${HEMI}.mid.${DOWNSAMPLE_MESH}k_fs_LR.MNI.surf.gii \
     ${OUTDIR}/${HEMI}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.func.gii \
@@ -214,3 +218,4 @@ for HEMI in lh rh ; do
     -roi ${HCP_STANDARD_DIR}/91282_Greyordinates/${FS_RL_FILE2}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.shape.gii 
 
 done
+echo "Neocortical preprocessing complete."

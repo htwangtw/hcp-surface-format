@@ -1,27 +1,10 @@
 #!/bin/bash - 
-#===============================================================================
-#
-#          FILE: GiftiReady.sh
-# 
-#         USAGE: ./GiftiReady.sh 
-# 
-#   DESCRIPTION: Convert Freesurfer recon_all output  to GIFTI format 
-# 
-#       OPTIONS: ---
-#  REQUIREMENTS: ---
-#          BUGS: ---
-#         NOTES: ---
-#        AUTHOR: Hao-Ting Wang (PostDoc), htwangtw@gmail.com
-#  ORGANIZATION: University of York
-#       CREATED: 08/06/19 12:52:11
-#      REVISION:  ---
-#===============================================================================
 
+# --------------------------------------------------------------------------------
+#  Usage Description Function
+# --------------------------------------------------------------------------------
 show_usage() {
-  echo " This is a basic script to prepare freesurfer files ready for HCP pipeline."
-  echo " The freesurfer files should be created through recon_all"
-  echo " and the white mater surface should have been manually checked. "
-  echo " The output files will be generated under the tmp/ directory"
+  echo " Convert Freesurfer recon_all output  to GIFTI format "
   echo ""
   echo " Usage:"
   echo " 	  GiftiReady.sh <R number> "
@@ -30,23 +13,31 @@ show_usage() {
 
 SUBJ=${1}
 
-HOME="/home/hw1012"
-WDIR="${HOME}/HCP_downsampling"
+WDIR="/groups/labs/semwandering/Cohort_HCPpipeline"
 DATA_DIR="${WDIR}/data"
 HCP_STANDARD_DIR="${DATA_DIR}/external/HCPpipelines_global/templates/standard_mesh_atlases"
-FSL_STANDARD_DIR="/usr/local/fsl/data/standard"
+FSL_STANDARD_DIR="/usr/share/fsl-5.0/data/standard"
+FSLDIR="/usr/share/fsl-5.0"
 SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
-TMPDIR="${DATA_DIR}/tmp"
+TMPDIR="${DATA_DIR}/tmp/${SUBJ}"
 OUTDIR="${DATA_DIR}/processed/${SUBJ}"
 
 mkdir -p ${TMPDIR}
 mkdir -p ${OUTDIR}
 
+# environment set up
+. $FSLDIR/etc/fslconf/fsl.sh
+
+# initialise freesurfer
+. /etc/freesurfer/5.3/freesurfer.sh
+# initialize fsl
+export FSLDIR="/usr/share/fsl-5.0"
+
 cd ${WDIR}
 
 echo "Preprocessing ${SUBJ}..."
 
-# 1.1 Get freesurfer data to MNI space warp field
+echo "Get freesurfer data to MNI space warp field"
 # convert the mgz file to nifti
 mri_convert  ${SURF_DIR}/mri/brain.mgz  ${OUTDIR}/fs_highres.nii.gz
 
@@ -70,6 +61,7 @@ invwarp -w ${OUTDIR}/fs_highres2standard_warp.nii.gz \
   -o ${OUTDIR}/standard2fs_highres_warp.nii.gz \
   -r ${OUTDIR}/fs_highres.nii.gz
 
+echo "create c_ras"
 #Find c_ras offset between FreeSurfer surface and volume and generate matrix to transform surfaces
 cras=($(mri_info --cras ${OUTDIR}/fs_highres.nii.gz))
 echo "1 0 0 ""${cras[0]}" >> ${OUTDIR}/c_ras.mat
@@ -78,14 +70,15 @@ echo "0 0 1 ""${cras[2]}" >> ${OUTDIR}/c_ras.mat
 echo "0 0 0 1" >> ${OUTDIR}/c_ras.mat
 
 for HEMI in lh rh ; do
-
+  echo "${HEMI}"
   if [ "${HEMI}" == "rh" ]; then
     FS_RL='R'
   elif [ "${HEMI}" == "lh" ]; then
     FS_RL='L'
   fi
-
-  # 1.2 generate white, pial, and mid-thickness gifti
+  
+  echo "create gifti"
+  # generate white, pial, and mid-thickness gifti
   wb_shortcuts -freesurfer-resample-prep \
     ${SURF_DIR}/surf/${HEMI}.white \
     ${SURF_DIR}/surf/${HEMI}.pial \
@@ -98,6 +91,7 @@ for HEMI in lh rh ; do
   mris_convert ${SURF_DIR}/surf/${HEMI}.white ${OUTDIR}/${HEMI}.white.surf.gii
 
   # apply cras
+  echo "apply cras"
   wb_command -surface-apply-affine \
     ${OUTDIR}/${HEMI}.pial.surf.gii \
     ${OUTDIR}/c_ras.mat \
@@ -111,7 +105,8 @@ for HEMI in lh rh ; do
     ${OUTDIR}/c_ras.mat \
     ${OUTDIR}/${HEMI}.midthickness.surf.gii
 
-  # 1.3 register native space surface files to MNI space
+  # register native space surface files to MNI space
+  echo "register native space surface file to MNI space"
   wb_command -surface-apply-warpfield \
     ${OUTDIR}/${HEMI}.midthickness.surf.gii \
     ${OUTDIR}/standard2fs_highres_warp.nii.gz \
@@ -128,3 +123,4 @@ for HEMI in lh rh ; do
     ${OUTDIR}/${HEMI}.white.MNI.surf.gii \
     -fnirt ${OUTDIR}/fs_highres2standard_warp.nii.gz
 done
+echo "Gifti reay!"

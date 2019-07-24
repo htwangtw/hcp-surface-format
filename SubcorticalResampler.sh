@@ -1,40 +1,47 @@
 #!/bin/bash
 set -e
 #
-#  environment: FSL and freesurfer binary added to path
 # --------------------------------------------------------------------------------
 #  Usage Description Function
 # --------------------------------------------------------------------------------
 show_usage() {
-  echo " This is a basic script to prepare freesurfer files ready for HCP pipeline."
-  echo " The freesurfer files should be created through recon_all"
-  echo " and the white mater surface should have been manually checked. "
-  echo " The output files will be generated under the freesurfer directory surf/ and mri/"
+  echo " Sample subcortical time series data to HCP format"
+  echo " Concatenate neocortical and subcortical files to HCP format"
   echo ""
   echo " Usage:"
-  echo " 	  neocortical_resampler.sh <R number> "
+  echo " 	  subcortical_resampler.sh <R number> "
   exit 1
 }
 
 SUBJ=${1}
 
-HOME="/home/hw1012"
-WDIR="${HOME}/HCP_downsampling"
+# paths
+WDIR="/groups/labs/semwandering/Cohort_HCPpipeline"
 DATA_DIR="${WDIR}/data"
-HCP_STANDARD_DIR="/home/hw1012/HCPpipelines/global/templates"
-HCP_CONFIG_DIR="/home/hw1012/HCPpipelines/global/config"
-FSL_STANDARD_DIR="/usr/local/fsl/data/standard"
+HCP_STANDARD_DIR="${DATA_DIR}/external/HCPpipelines_global/templates/"
+HCP_CONFIG_DIR="${DATA_DIR}/external/HCPpipelines_global/config"
+FSL_STANDARD_DIR="/usr/share/fsl-5.0/data/standard"
 SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
 FUNC_DIR="${DATA_DIR}/interim/${SUBJ}"
-TMPDIR="${DATA_DIR}/tmp"
+TMPDIR="${DATA_DIR}/tmp/${SUBJ}"
 OUTDIR="${DATA_DIR}/processed/${SUBJ}"
 
-cd ${WDIR}
+# environment set up
+# initialise freesurfer
+. /etc/freesurfer/5.3/freesurfer.sh
+# initialize fsl
+export FSLDIR="/usr/share/fsl-5.0"
+FSLDIR="/usr/share/fsl-5.0"
+. $FSLDIR/etc/fslconf/fsl.sh
+
+# smoothing set up
 DOWNSAMPLE_MESH=5
 SmoothingFWHM=3
 Sigma=$(echo "$SmoothingFWHM / ( 2 * ( sqrt ( 2 * l ( 2 ) ) ) )" | bc -l)
-####### 2-4. sample subcortical time series data on the surface
-####### 2-4-1) convert FreeSurfer Volumes
+
+cd ${WDIR}
+
+echo "convert FreeSurfer Volumes"
 mri_convert \
   -rt nearest \
   -rl ${OUTDIR}/fs_highres.nii.gz \
@@ -60,7 +67,7 @@ wb_command -volume-label-import \
   -drop-unused-labels
 
 
-####### 2-4-2) import Subcortical ROIs
+echo "import Subcortical ROIs"
 applywarp \
   --interp=nn \
   -i ${TMPDIR}/wmparc_reo2MNI_nlwarp_nii.nii.gz \
@@ -87,7 +94,7 @@ wb_command -volume-label-import \
   ${TMPDIR}/ROIs.5.nii.gz \
   -discard-others
 
-####### 2-4-3) create subject-roi subcortical cifti at same resolution as output
+echo "create subject-roi subcortical cifti at same resolution as output"
 wb_command -volume-affine-resample \
   ${TMPDIR}/ROIs.5.nii.gz \
   ${FSLDIR}/etc/flirtsch/ident.mat \
@@ -114,12 +121,13 @@ wb_command -cifti-create-label \
   ${HCP_STANDARD_DIR}/91282_Greyordinates/Atlas_ROIs.5.nii.gz
 
 echo "wb_command: Smoothing and resampling"
-#this is the whole timeseries, so don't overwrite, in order to allow on-disk writing, then delete temporary
+# this is the whole timeseries, so don't overwrite, 
+# in order to allow on-disk writing, then delete temporary
 wb_command -cifti-smoothing \
   ${TMPDIR}/_temp_dilate.dtseries.nii 0 \
   ${Sigma} COLUMN ${TMPDIR}/_temp_subject_smooth.dtseries.nii \
   -fix-zeros-volume
-#resample
+# resample
 wb_command -cifti-resample \
   ${TMPDIR}/_temp_subject_smooth.dtseries.nii \
   COLUMN \
@@ -128,14 +136,15 @@ wb_command -cifti-resample \
   ${TMPDIR}/_temp_atlas.dtseries.nii \
   -volume-predilate 10
 
-####### 2-4-4) write output volume
+
+echo "write output volume"
 wb_command -cifti-separate \
   ${TMPDIR}/_temp_atlas.dtseries.nii \
   COLUMN \
   -volume-all \
   ${OUTDIR}/func_AtlasSubcortical_s${SmoothingFWHM}.nii.gz
 
-####### 2-4-5) concate cortical and subcortical time series
+echo "Concatenate files to HCP cifti"
 TR_vol=`fslval ${FUNC_DIR}/prepro_func_MNI.nii pixdim4 | cut -d " " -f 1`
 
 wb_command -cifti-create-dense-timeseries \
@@ -148,6 +157,7 @@ wb_command -cifti-create-dense-timeseries \
   -roi-right ${HCP_STANDARD_DIR}/91282_Greyordinates/R.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.shape.gii \
   -timestep $TR_vol
 
+echo "done"
 # clean files
 
 # rm -rf ${TMPDIR}/*

@@ -1,16 +1,11 @@
 #!/bin/bash
 set -e
 #
-#  environment: FSL and freesurfer binary added to path
-# need to make this file spm competible
 # --------------------------------------------------------------------------------
 #  Usage Description Function
 # --------------------------------------------------------------------------------
 show_usage() {
-  echo " This is a basic script to prepare freesurfer files ready for HCP pipeline."
-  echo " The freesurfer files should be created through recon_all"
-  echo " and the white mater surface should have been manually checked. "
-  echo " The output files will be generated under the freesurfer directory surf/ and mri/"
+  echo " create goodvoxel and ribbon mask for surface resampling"
   echo ""
   echo " Usage:"
   echo " 	  goodvoxels_ribbon.sh <R number> "
@@ -19,48 +14,63 @@ show_usage() {
 
 SUBJ=${1}
 
-HOME="/home/hw1012"
-WDIR="${HOME}/HCP_downsampling"
+WDIR="/groups/labs/semwandering/Cohort_HCPpipeline"
 DATA_DIR="${WDIR}/data"
 HCP_STANDARD_DIR="${DATA_DIR}/external/HCPpipelines_global/templates/standard_mesh_atlases"
-FSL_STANDARD_DIR="/usr/local/fsl/data/standard"
+FSL_STANDARD_DIR="/usr/share/fsl-5.0/data/standard"
 SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
 FUNC_DIR="${DATA_DIR}/interim/${SUBJ}"
-TMPDIR="${DATA_DIR}/tmp"
+TMPDIR="${DATA_DIR}/tmp/${SUBJ}"
 OUTDIR="${DATA_DIR}/processed/${SUBJ}"
+FSLDIR="/usr/share/fsl-5.0"
+. $FSLDIR/etc/fslconf/fsl.sh
 
 cd ${WDIR}
 
 echo "Preprocessing ${SUBJ}..."
 
 echo "Creating cortical ribbons for ${SUBJ}..."
-for HEMI in lh rh ; do
 
+mkdir -p ${TMPDIR}
+
+for HEMI in lh rh ; do
+  echo "${HEMI}..."
+  echo "signed distance volume - white"
   wb_command -create-signed-distance-volume \
     ${OUTDIR}/${HEMI}.white.MNI.surf.gii \
     ${FUNC_DIR}/mean_func_MNI.nii \
     ${TMPDIR}/${HEMI}.white.MNI.dist.nii.gz
+    
+  echo "signed distance volume - pial"
   wb_command -create-signed-distance-volume \
     ${OUTDIR}/${HEMI}.pial.MNI.surf.gii \
     ${FUNC_DIR}/mean_func_MNI.nii \
     ${TMPDIR}/${HEMI}.pial.MNI.dist.nii.gz
+    
   fslmaths ${TMPDIR}/${HEMI}.white.MNI.dist.nii.gz \
     -thr 0 -bin -mul 255 \
     ${TMPDIR}/${HEMI}.white_thr0.MNI.dist.nii.gz
+    
   fslmaths ${TMPDIR}/${HEMI}.white_thr0.MNI.dist.nii.gz \
     -bin ${TMPDIR}/${HEMI}.white_thr0.MNI.dist.nii.gz
+    
   fslmaths ${TMPDIR}/${HEMI}.pial.MNI.dist.nii.gz \
     -uthr 0 -abs -bin \
     -mul 255 ${TMPDIR}/${HEMI}.pial_uthr0.MNI.dist.nii.gz
+    
   fslmaths ${TMPDIR}/${HEMI}.pial_uthr0.MNI.dist.nii.gz \
     -bin ${TMPDIR}/${HEMI}.pial_uthr0.MNI.dist.nii.gz
+  
   fslmaths ${TMPDIR}/${HEMI}.pial_uthr0.MNI.dist.nii.gz \
     -mas ${TMPDIR}/${HEMI}.white_thr0.MNI.dist.nii.gz \
     -mul 255 ${TMPDIR}/${HEMI}.ribbon.nii.gz
+  
+  echo "ribbon created"
   fslmaths ${TMPDIR}/${HEMI}.ribbon.nii.gz \
     -bin -mul 1 ${TMPDIR}/${HEMI}.ribbon.nii.gz
 done
 
+echo "Combine the voxel ribbons as ribbon_only.nii.gz"
 fslmaths ${TMPDIR}/lh.ribbon.nii.gz \
   -add ${TMPDIR}/rh.ribbon.nii.gz \
   ${TMPDIR}/ribbon_only.nii.gz
@@ -71,6 +81,7 @@ echo "create a goodvoxel volume..."
 fslmaths ${FUNC_DIR}/prepro_func_MNI.nii \
   -Tmean ${TMPDIR}/mean \
   -odt float
+  
 fslmaths ${FUNC_DIR}/prepro_func_MNI.nii \
   -Tstd ${TMPDIR}/std \
   -odt float
@@ -115,3 +126,5 @@ fslmaths \
   ${TMPDIR}/cov_norm_modulate \
   -thr $Upper -bin -sub ${TMPDIR}/mask -mul -1 \
   ${TMPDIR}/goodvoxels
+  
+echo "goodvoxels and ribbon created"

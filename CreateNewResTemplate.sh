@@ -1,9 +1,9 @@
 #!/bin/bash - 
 #===============================================================================
 #
-#          FILE: createNewTemplateSpace.sh
+#          FILE: CreateNewResTemplate.sh
 # 
-#         USAGE: ./createNewTemplateSpace.sh 5125 5
+#         USAGE: ./CreateNewResTemplate.sh 5125 5
 # 
 #   DESCRIPTION: Basic function to add new resolution templates to HCP pipeline 
 #		 repository.
@@ -30,23 +30,23 @@ show_usage() {
   echo "       from the Pipelines/global/templates/standard_mesh_atlases dir"
   echo ""
   echo " Usage:"
-  echo " 	  CreateNewTemplateSpace.sh TargetNumberOfVertices ShortNameForTargetVolume (e.g., 32 for 32492 or 10 for 10248)"
-  echo "    i.e.: CreateNewTemplateSpace.sh 8000 8"
+  echo " 	  CreateNewResTemplate.sh TargetNumberOfVertices ShortNameForTargetVolume (e.g., 32 for 32492 or 10 for 10248)"
+  echo "    i.e.: CreateNewResTemplate.sh 8000 8"
   exit 1
 }
 
 
 if [ $# -eq 0 ] ; then show_usage; exit 0; fi
 
-HCPPIPEDIR=~/HCPpipelines
+HCPPIPEDIR=/groups/labs/semwandering/Cohort_HCPpipeline/data/external/HCPpipelines_global
 WBDIR=/usr/bin
 
 NumberOfVertices=${1}                           # per hamishpere
 NewMesh=${2}                                    # ?k
 
-TemplateFolder="${HCPPIPEDIR}/global/templates/standard_mesh_atlases"
+TemplateFolder="${HCPPIPEDIR}/templates/standard_mesh_atlases"
 OriginalMesh="164"                              # keep it this way
-SubcorticalLabelTable="${HCPPIPEDIR}/global/config/FreeSurferSubcorticalLabelTableLut.txt"
+SubcorticalLabelTable="${HCPPIPEDIR}/config/FreeSurferSubcorticalLabelTableLut.txt"
 
 ${WBDIR}/wb_command -surface-create-sphere \
   ${NumberOfVertices} \
@@ -88,7 +88,7 @@ flirt -interp spline \
   -applyisoxfm ${NewResolution} \
   -out ${TemplateFolder}/Atlas_ROIs.${NewResolution}.nii.gz
 applywarp --rel --interp=nn \
-  -i ${TemplateFolder}/Avgwmparc.nii.gz
+  -i ${TemplateFolder}/Avgwmparc.nii.gz \
   -r ${TemplateFolder}/Atlas_ROIs.${NewResolution}.nii.gz \
   --premat=$FSLDIR/etc/flirtsch/ident.mat \
   -o ${TemplateFolder}/Atlas_ROIs.${NewResolution}.nii.gz
@@ -101,7 +101,7 @@ ${WBDIR}/wb_command -volume-label-import \
   -drop-unused-labels
 
 cp ${TemplateFolder}/Atlas_ROIs.${NewResolution}.nii.gz \
-  ${HCPPIPEDIR}/global/templates/91282_Greyordinates/Atlas_ROIs.${NewResolution}.nii.gz
+  ${HCPPIPEDIR}/templates/91282_Greyordinates/Atlas_ROIs.${NewResolution}.nii.gz
 
 
 for Hemisphere in L R; do
@@ -118,5 +118,5 @@ for Hemisphere in L R; do
     ${TemplateFolder}/${Hemisphere}.sphere.${NewMesh}k_fs_LR.surf.gii \
     ${TemplateFolder}/colin.cerebral.${Hemisphere}.flat.${NewMesh}k_fs_LR.surf.gii
   cp ${TemplateFolder}/${Hemisphere}.atlasroi.${NewMesh}k_fs_LR.shape.gii \
-     ${HCPPIPEDIR}/global/templates/91282_Greyordinates/${Hemisphere}.atlasroi.${NewMesh}k_fs_LR.shape.gii
+     ${HCPPIPEDIR}/templates/91282_Greyordinates/${Hemisphere}.atlasroi.${NewMesh}k_fs_LR.shape.gii
 done
