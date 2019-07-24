@@ -22,7 +22,7 @@ HCP_STANDARD_DIR="${DATA_DIR}/external/HCPpipelines_global/templates/"
 HCP_CONFIG_DIR="${DATA_DIR}/external/HCPpipelines_global/config"
 FSL_STANDARD_DIR="/usr/share/fsl-5.0/data/standard"
 SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
-FUNC_DIR="${DATA_DIR}/interim/${SUBJ}"
+FUNC_DIR="${DATA_DIR}/interim/${SUBJ}/prepro_func_MNI.nii" # change here if you want a GSR version
 TMPDIR="${DATA_DIR}/tmp/${SUBJ}"
 OUTDIR="${DATA_DIR}/processed/${SUBJ}"
 
@@ -98,13 +98,13 @@ echo "create subject-roi subcortical cifti at same resolution as output"
 wb_command -volume-affine-resample \
   ${TMPDIR}/ROIs.5.nii.gz \
   ${FSLDIR}/etc/flirtsch/ident.mat \
-  ${FUNC_DIR}/prepro_func_MNI.nii \
+  ${FUNC_DIR}\
   ENCLOSING_VOXEL \
   ${TMPDIR}/ROIs.5.func.nii.gz
 wb_command -cifti-create-dense-timeseries \
   ${TMPDIR}/_temp.dtseries.nii \
   -volume \
-  ${FUNC_DIR}/prepro_func_MNI.nii \
+  ${FUNC_DIR} \
   ${TMPDIR}/ROIs.5.func.nii.gz
 
 echo "wb_command: Dilating out zeros"
@@ -145,7 +145,7 @@ wb_command -cifti-separate \
   ${OUTDIR}/func_AtlasSubcortical_s${SmoothingFWHM}.nii.gz
 
 echo "Concatenate files to HCP cifti"
-TR_vol=`fslval ${FUNC_DIR}/prepro_func_MNI.nii pixdim4 | cut -d " " -f 1`
+TR_vol=`fslval ${FUNC_DIR} pixdim4 | cut -d " " -f 1`
 
 wb_command -cifti-create-dense-timeseries \
   ${OUTDIR}/func.dtseries.nii \

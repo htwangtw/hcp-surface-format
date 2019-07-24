@@ -18,7 +18,7 @@ DATA_DIR="${WDIR}/data"
 HCP_STANDARD_DIR="${DATA_DIR}/external/HCPpipelines_global/templates/"
 FSL_STANDARD_DIR="/usr/share/fsl-5.0/data/standard"
 SURF_DIR="${DATA_DIR}/interim/${SUBJ}/Freesurfer"
-FUNC_DIR="${DATA_DIR}/interim/${SUBJ}"
+FUNC_DIR="${DATA_DIR}/interim/${SUBJ}/prepro_func_MNI.nii" # change here if you want a GSR version
 TMPDIR="${DATA_DIR}/tmp/${SUBJ}"
 OUTDIR="${DATA_DIR}/processed/${SUBJ}"
 FSLDIR="/usr/share/fsl-5.0"
@@ -34,6 +34,8 @@ cd ${WDIR}
 DOWNSAMPLE_MESH=5
 SmoothingFWHM=3
 Sigma=$(echo "$SmoothingFWHM / ( 2 * ( sqrt ( 2 * l ( 2 ) ) ) )" | bc -l)
+
+mkdir -p OUTDIR
 
 for HEMI in lh rh ; do
   if [ "${HEMI}" == "rh" ]; then
@@ -172,7 +174,7 @@ for HEMI in lh rh ; do
   echo "resample the time series"
   # using a concatenated surface registration field (sampling time series, mask it and resample)
   wb_command -volume-to-surface-mapping \
-    ${FUNC_DIR}/prepro_func_MNI.nii \
+    ${FUNC_DIR} \
     ${OUTDIR}/${HEMI}.midthickness.MNI.surf.gii \
     ${TMPDIR}/${HEMI}.timeseries.MNI.func.gii \
     -ribbon-constrained \
@@ -218,4 +220,5 @@ for HEMI in lh rh ; do
     -roi ${HCP_STANDARD_DIR}/91282_Greyordinates/${FS_RL_FILE2}.atlasroi.${DOWNSAMPLE_MESH}k_fs_LR.shape.gii 
 
 done
+
 echo "Neocortical preprocessing complete."
