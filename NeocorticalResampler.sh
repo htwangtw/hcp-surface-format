@@ -35,7 +35,7 @@ DOWNSAMPLE_MESH=5
 SmoothingFWHM=3
 Sigma=$(echo "$SmoothingFWHM / ( 2 * ( sqrt ( 2 * l ( 2 ) ) ) )" | bc -l)
 
-mkdir -p OUTDIR
+mkdir -p $OUTDIR
 
 for HEMI in lh rh ; do
   if [ "${HEMI}" == "rh" ]; then
