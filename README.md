@@ -2,8 +2,8 @@
 This project project freesurfer/MNI volume space data to HCP CIFTI files and downsample to resolutions < 32k.
 
 ## Data input
-Structural - Freesurfer recon-all results (white matter boarder visually inspected)
-Functional - Basic preprocessed resting state timeseries and average volumes in MNI space. 
+Structural - Freesurfer recon-all results (white matter boarder visually inspected)  
+Functional - Basic preprocessed resting state timeseries and average volumes in MNI space.   
 
 fMRI preprocessing:
  - Motion correction
@@ -15,11 +15,11 @@ Optional:
  - Global signal regression
 
 ## Environment setup
-HCP pipeline (minimum: files under HCPpipeline/global/)
-BALSA_database
-Freesurfer
-FSL
-Connectome workbench
+HCP pipeline (minimum: files under HCPpipeline/global/)  
+BALSA_database  
+Freesurfer  
+FSL  
+Connectome workbench  
 
 ## Order
 ### common space template
