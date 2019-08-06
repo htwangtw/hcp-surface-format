@@ -1,4 +1,4 @@
-from utilities.NewTemplateGenerator import NewTemplateGenerator
+from utilities.new_spherical_templates_generator import NewSphericalTemplatesGenerator
 
-templateGenerator = NewTemplateGenerator(800, 'templates')
-templateGenerator.generate_spheres()
+sphericalTemplateGenerator = NewSphericalTemplatesGenerator(8000, 'templates')
+sphericalTemplateGenerator.generate_spheres()
