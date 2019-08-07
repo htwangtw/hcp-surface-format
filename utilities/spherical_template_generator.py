@@ -2,9 +2,9 @@ from .base_generator import BaseWorkbenchGenerator
 import os
 import subprocess
 
-class NewSphericalTemplatesGenerator(BaseWorkbenchGenerator):
+class SphericalTemplateGenerator(BaseWorkbenchGenerator):
     def __init__(self, num_vertices, output_dir):
-        super(NewSphericalTemplatesGenerator, self).__init__(output_dir)
+        super(SphericalTemplateGenerator, self).__init__(output_dir)
 
         assert (num_vertices >= 1000), "The resolution needs to be at least 1000"
         self.num_vertices = num_vertices
