@@ -4,7 +4,9 @@ import subprocess
 class BaseWorkbenchGenerator:
     def __init__(self, output_dir):
         self.wb_dir = os.getenv('WB_DIR')
+        self.hcp_pipelines_dir = os.getenv('HCP_PIPELINES_DIR')
         self.hcp_standard_mesh_atlases_dir = os.getenv('HCP_STANDARD_MESH_ATLASES_DIR')
+        self.hcp_balsa_dir = os.getenv('HCP_BALSA_DIR')
 
         self.wb_command = os.path.join(self.wb_dir, "wb_command")
 
